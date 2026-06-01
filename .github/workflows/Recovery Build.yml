@@ -14,15 +14,15 @@ on:
       DEVICE_TREE_URL:
         description: 'DEVICE_TREE_URL'
         required: true
-        default: 'https://github.com/TeamWin/android_device_asus_I003D'
+        default: 'https://github.com/xyyyico/device-5g-L39_IVVI_4_64_V80M60BP_NZW_BT30.git'
       DEVICE_TREE_BRANCH:
         description: 'DEVICE_TREE_BRANCH'
         required: true
-        default: 'android-12.1'
+        default: 'main'
       DEVICE_PATH:
         description: 'DEVICE_PATH'
         required: true
-        default: 'device/asus/I003D'
+        default: 'device/5g/L39_IVVI_4_64_V80M60BP_NZW_BT30'
       COMMON_TREE_URL:
         description: 'COMMON_TREE_URL (if no common tree, leave blank)'
         required: false
@@ -32,11 +32,11 @@ on:
       DEVICE_NAME:
         description: 'DEVICE_NAME'
         required: true
-        default: 'I003D'
+        default: 'L39_IVVI_4_64_V80M60BP_NZW_BT30'
       MAKEFILE_NAME:
         description: 'MAKEFILE_NAME'
         required: true
-        default: 'twrp_I003D'
+        default: 'twrp_L39_IVVI_4_64_V80M60BP_NZW_BT30'
       BUILD_TARGET:
         description: 'BUILD_TARGET'
         required: true
@@ -62,14 +62,11 @@ jobs:
         echo "Build Target: ${{ github.event.inputs.BUILD_TARGET }}.img"
         echo "::endgroup::"
 
-    # You might want to Checkout your repo first, but not mandatory
     - name: Check Out
       uses: actions/checkout@v4
 
-    # Cleanup The Actions Workspace Using Custom Composite Run Actions
     - name: Cleanup
       uses: rokibhasansagar/slimhub_actions@main
-      # That's it! Now use your normal steps
 
     - name: Prepare the environment
       run: |
@@ -162,7 +159,7 @@ jobs:
     - name: Upload to Release
       uses: softprops/action-gh-release@v2
       with:
-        files: | 
+        files: |
           workspace/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/${{ github.event.inputs.BUILD_TARGET }}.img
           workspace/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/*.zip
           workspace/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/*vendor*.img
