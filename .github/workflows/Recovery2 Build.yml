@@ -1,28 +1,41 @@
+# 编译名称：Recovery2 Build（已完美适配你的设备）
 name: Recovery2 Build
 
+# 手动触发编译
 on:
   workflow_dispatch:
     inputs:
+      # TWRP 源码清单地址（不变）
       MANIFEST_URL:
-        description: 'MANIFEST_URL (SSH: git@github.com:XXXXX)'
+        description: 'MANIFEST_URL (默认 TWRP 官方)'
         required: true
         default: 'https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp'
+
+      # TWRP 基于 Android 12.1（最稳定）
       MANIFEST_BRANCH:
         description: 'MANIFEST_BRANCH'
         required: true
         default: 'twrp-12.1'
+
+      # 你的设备树仓库（已填好）
       DEVICE_TREE_URL:
         description: 'DEVICE_TREE_URL'
         required: true
         default: 'https://github.com/xyyyico/device-5g-L39_IVVI_4_64_V80M60BP_NZW_BT30.git'
+
+      # 设备树分支（默认 main）
       DEVICE_TREE_BRANCH:
         description: 'DEVICE_TREE_BRANCH'
         required: true
         default: 'main'
+
+      # 你的设备路径（已填好）
       DEVICE_PATH:
         description: 'DEVICE_PATH'
         required: true
         default: 'device/5g/L39_IVVI_4_64_V80M60BP_NZW_BT30'
+
+      # 公共设备树（你的设备不需要，留空）
       COMMON_TREE_URL:
         description: 'COMMON_TREE_URL (空则不填)'
         required: false
@@ -35,27 +48,37 @@ on:
         description: 'COMMON_PATH (空则不填)'
         required: false
         default: ''
+
+      # 你的设备代号（已填好）
       DEVICE_NAME:
         description: 'DEVICE_NAME'
         required: true
         default: 'L39_IVVI_4_64_V80M60BP_NZW_BT30'
+
+      # Makefile 名称（和 omni.mk 一致）
       MAKEFILE_NAME:
         description: 'MAKEFILE_NAME'
         required: true
         default: 'twrp_L39_IVVI_4_64_V80M60BP_NZW_BT30'
+
+      # 重要！你的设备无 REC 分区，必须编译 boot
       BUILD_TARGET:
         description: 'BUILD_TARGET (recovery / boot)'
         required: true
-        default: 'recovery'
+        default: 'boot'
 
+# 编译任务
 jobs:
   build:
+    # 仅仓库所有者可运行
     if: github.event.repository.owner.id == github.event.sender.id
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
-      - name: Display Parameters
+      # 显示编译参数
+      - name: 显示编译参数
         run: |
           echo "::group::Parameters"
           echo "Manifest: ${{ inputs.MANIFEST_BRANCH }}"
@@ -64,13 +87,16 @@ jobs:
           echo "Target: ${{ inputs.BUILD_TARGET }}"
           echo "::endgroup::"
 
-      - name: Checkout
+      # 拉取代码
+      - name: 拉取仓库
         uses: actions/checkout@v4
 
-      - name: Cleanup
+      # 清理系统空间
+      - name: 清理环境空间
         uses: rokibhasansagar/slimhub_actions@main
 
-      - name: Prepare Build Environment
+      # 安装编译依赖
+      - name: 准备编译环境
         run: |
           sudo apt clean
           sudo apt update -y
@@ -81,48 +107,55 @@ jobs:
             squashfs-tools zip unzip curl python3 python-is-python3 \
             x11proto-core-dev libx11-dev libgl1-mesa-dev libxml2-utils
 
-      - name: Setup Java 11
+      # 安装 Java 11
+      - name: 安装 Java 11
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '11'
 
+      # SSH 配置（你的设备用不到）
       - name: Setup SSH
         if: startsWith(inputs.MANIFEST_URL, 'git@') || startsWith(inputs.DEVICE_TREE_URL, 'git@') || startsWith(inputs.COMMON_TREE_URL, 'git@')
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Install Repo
+      # 安装 repo 工具
+      - name: 安装 Repo
         run: |
           mkdir -p ~/bin
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
           chmod +x ~/bin/repo
           sudo ln -sf ~/bin/repo /usr/bin/repo
 
-      - name: Init Repo
+      # 初始化 TWRP 源码
+      - name: 初始化 Repo
         run: |
           mkdir -p workspace
           cd workspace
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
           repo init --depth=1 -u ${{ inputs.MANIFEST_URL }} -b ${{ inputs.MANIFEST_BRANCH }}
-        id: repo_init
 
-      - name: Repo Sync
+      # 同步源码
+      - name: 同步 TWRP 源码
         run: repo sync -c -j$(nproc) --force-sync --no-clone-bundle
         working-directory: workspace
 
-      - name: Clone Device Tree
+      # 克隆你的设备树
+      - name: 克隆设备树
         run: git clone ${{ inputs.DEVICE_TREE_URL }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ./${{ inputs.DEVICE_PATH }}
         working-directory: workspace
 
-      - name: Clone Common Tree
+      # 克隆公共树（你的设备不需要）
+      - name: 克隆公共设备树
         if: inputs.COMMON_TREE_URL != '' && inputs.COMMON_PATH != ''
         run: git clone ${{ inputs.COMMON_TREE_URL }} -b ${{ inputs.COMMON_TREE_BRANCH }} ./${{ inputs.COMMON_PATH }}
         working-directory: workspace
 
-      - name: Detect Build Type
+      # 自动判断编译类型
+      - name: 检测编译类型
         uses: haya14busa/action-cond@v1
         id: buildtype
         with:
@@ -130,7 +163,8 @@ jobs:
           if_true: twrp
           if_false: omni
 
-      - name: Sync Device Dependencies
+      # 同步设备依赖
+      - name: 同步设备依赖库
         run: |
           if [ -f ${{ inputs.DEVICE_PATH }}/${{ steps.buildtype.outputs.value }}.dependencies ]; then
             bash ../scripts/convert.sh ${{ inputs.DEVICE_PATH }}/${{ steps.buildtype.outputs.value }}.dependencies
@@ -139,19 +173,22 @@ jobs:
         working-directory: workspace
         continue-on-error: true
 
-      - name: Setup Swap
+      # 设置虚拟内存
+      - name: 设置 14G 交换分区
         uses: pierotofy/set-swap-space@master
         with:
           swap-size-gb: 14
 
-      - name: Enable CCache
+      # 开启编译缓存
+      - name: 启用 CCache 加速编译
         run: |
           echo "USE_CCACHE=1" >> $GITHUB_ENV
           echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
           ccache -M 10G
         working-directory: workspace
 
-      - name: Build Recovery
+      # 开始编译
+      - name: 开始编译 Recovery / Boot
         run: |
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
@@ -161,7 +198,8 @@ jobs:
           make ${{ inputs.BUILD_TARGET }}image -j$(nproc)
         working-directory: workspace
 
-      - name: Upload to Release
+      # 上传编译产物
+      - name: 上传到 Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -172,10 +210,10 @@ jobs:
           name: TWRP-${{ inputs.DEVICE_NAME }}-${{ github.run_id }}
           tag_name: ${{ github.run_id }}
           body: |
-            ✅ Build Successful
-            Manifest: ${{ inputs.MANIFEST_BRANCH }}
-            Device: ${{ inputs.DEVICE_NAME }}
-            Makefile: ${{ inputs.MAKEFILE_NAME }}
-            Target: ${{ inputs.BUILD_TARGET }}.img
+            ✅ 编译成功
+            源码版本: ${{ inputs.MANIFEST_BRANCH }}
+            设备代号: ${{ inputs.DEVICE_NAME }}
+            编译目标: ${{ inputs.BUILD_TARGET }}.img
+            说明：无REC分区，boot分区内置Recovery
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
