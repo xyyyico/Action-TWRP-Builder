@@ -1,4 +1,4 @@
-name: Recovery Build
+name: diting_Recovery Build
 
 on:
   workflow_dispatch:
