@@ -1,4 +1,4 @@
-name: diting_Recovery Build
+name: twrp_Recovery Build(k50至尊版）
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ on:
       DEVICE_TREE_BRANCH:
         description: 'DEVICE_TREE_BRANCH'
         required: true
-        default: 'twrp-12.1'
+        default: 'main'  # ✅ 已修复！
       DEVICE_PATH:
         description: 'DEVICE_PATH'
         required: true
